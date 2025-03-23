@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -19,16 +18,28 @@ var (
 	ClientID string
 )
 
+type Equation struct {
+	equation_type string
+	sign          bool
+	a             int
+	b             int
+	c             int
+	d             int
+}
+
 var money map[string]int
+var equations map[string]Equation
 
 func Run() {
 	money = make(map[string]int)
+	equations = make(map[string]Equation)
 	discord, err := discordgo.New("Bot " + BotToken)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	discord.AddHandler(newMessage)
+	discord.AddHandler(onGuildJoin)
 
 	discord.AddHandler(func(session *discordgo.Session, interation *discordgo.InteractionCreate) {
 		if interation.Type == discordgo.InteractionApplicationCommand {
@@ -50,23 +61,175 @@ func Run() {
 
 }
 
+func onGuildJoin(discord *discordgo.Session, event *discordgo.GuildCreate) {
+	registerCommands(discord, event.ID)
+}
+
 func newMessage(discord *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.Author.ID == discord.State.User.ID {
 		return
-	}
-
-	switch {
-	case strings.HasPrefix(message.Content, "!register"):
-		registerCommands(discord, message.GuildID)
 	}
 }
 
 func buttonClick(discord *discordgo.Session, interation *discordgo.InteractionCreate) {
 	switch interation.MessageComponentData().CustomID {
 	case "earn:possible":
+		_, ok := money[interation.Member.User.ID]
+
+		if !ok {
+			discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "You don't have a bank account",
+				},
+			})
+			return
+		}
+
+		_, ok2 := equations[interation.Member.User.ID]
+
+		if !ok2 {
+			discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "You didn't start a job",
+				},
+			})
+			return
+		}
+
+		if equations[interation.Member.User.ID].equation_type == "sqrt" {
+			a := equations[interation.Member.User.ID].a * equations[interation.Member.User.ID].b
+			b := equations[interation.Member.User.ID].c * equations[interation.Member.User.ID].d
+			var c int
+			if equations[interation.Member.User.ID].sign {
+				c = a + b
+			} else {
+				c = a - b
+			}
+
+			if c >= 0 {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Correct $1 has been added to your account",
+					},
+				})
+				money[interation.Member.User.ID] += 1
+			} else {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Incorrect",
+					},
+				})
+			}
+		} else if equations[interation.Member.User.ID].equation_type == "log" {
+			a := equations[interation.Member.User.ID].a * equations[interation.Member.User.ID].b
+			b := equations[interation.Member.User.ID].c * equations[interation.Member.User.ID].d
+			var c int
+			if equations[interation.Member.User.ID].sign {
+				c = a + b
+			} else {
+				c = a - b
+			}
+
+			if c > 0 {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Correct $1 has been added to your account",
+					},
+				})
+				money[interation.Member.User.ID] += 1
+			} else {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Incorrect",
+					},
+				})
+			}
+		}
 
 	case "earn:impossible":
+		_, ok := money[interation.Member.User.ID]
 
+		if !ok {
+			discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "You don't have a bank account",
+				},
+			})
+			return
+		}
+
+		_, ok2 := equations[interation.Member.User.ID]
+
+		if !ok2 {
+			discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "You didn't start a job",
+				},
+			})
+			return
+		}
+
+		if equations[interation.Member.User.ID].equation_type == "sqrt" {
+			a := equations[interation.Member.User.ID].a * equations[interation.Member.User.ID].b
+			b := equations[interation.Member.User.ID].c * equations[interation.Member.User.ID].d
+			var c int
+			if equations[interation.Member.User.ID].sign {
+				c = a + b
+			} else {
+				c = a - b
+			}
+
+			if c < 0 {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Correct $1 has been added to your account",
+					},
+				})
+				money[interation.Member.User.ID] += 1
+			} else {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Incorrect",
+					},
+				})
+			}
+		} else if equations[interation.Member.User.ID].equation_type == "log" {
+			a := equations[interation.Member.User.ID].a * equations[interation.Member.User.ID].b
+			b := equations[interation.Member.User.ID].c * equations[interation.Member.User.ID].d
+			var c int
+			if equations[interation.Member.User.ID].sign {
+				c = a + b
+			} else {
+				c = a - b
+			}
+
+			if c <= 0 {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Correct $1 has been added to your account",
+					},
+				})
+				money[interation.Member.User.ID] += 1
+			} else {
+				discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Incorrect",
+					},
+				})
+			}
+		}
 	}
 }
 
@@ -265,6 +428,95 @@ func slashCommand(discord *discordgo.Session, interation *discordgo.InteractionC
 		}
 	case "earn":
 
+		var temp_eq string
+		var temp_sign bool
+
+		eq_num := rand.Intn(2)
+		sign_num := rand.Intn(2)
+
+		if eq_num == 0 {
+			temp_eq = "sqrt"
+		} else {
+			temp_eq = "log"
+		}
+
+		if sign_num == 0 {
+			temp_sign = false
+		} else {
+			temp_sign = true
+		}
+
+		user_equation := Equation{
+			equation_type: temp_eq,
+			sign:          temp_sign,
+			a:             rand.Intn(512) - 256,
+			b:             rand.Intn(512) - 256,
+			c:             rand.Intn(512) - 256,
+			d:             rand.Intn(512) - 256,
+		}
+
+		equations[interation.Member.User.ID] = user_equation
+
+		var final_equation string
+
+		if user_equation.equation_type == "sqrt" {
+			final_equation += "√"
+		} else if user_equation.equation_type == "log" {
+			final_equation += "log"
+		}
+
+		final_equation += "[(" + strconv.Itoa(user_equation.a) + ") "
+		final_equation += "(" + strconv.Itoa(user_equation.b) + ")"
+
+		if user_equation.sign {
+			final_equation += " + "
+		} else {
+			final_equation += " - "
+		}
+
+		final_equation += "(" + strconv.Itoa(user_equation.c) + ") "
+		final_equation += "(" + strconv.Itoa(user_equation.d) + ")]"
+
+		embed := &discordgo.MessageEmbed{
+			Author:      &discordgo.MessageEmbedAuthor{},
+			Color:       0x0000FF, // Blue
+			Description: final_equation,
+			Timestamp:   time.Now().Format(time.RFC3339),
+			Title:       "Is this equation possible?",
+		}
+
+		components := []discordgo.MessageComponent{
+			discordgo.ActionsRow{
+				Components: []discordgo.MessageComponent{
+					discordgo.Button{
+						Label:    "Possible",
+						Style:    discordgo.PrimaryButton,
+						CustomID: "earn:possible",
+					},
+					discordgo.Button{
+						Label:    "Impossible",
+						Style:    discordgo.SecondaryButton,
+						CustomID: "earn:impossible",
+					},
+				},
+			},
+		}
+
+		discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds:     []*discordgo.MessageEmbed{embed},
+				Components: components,
+			},
+		})
+	case "update":
+		registerCommands(discord, interation.Member.GuildID)
+		discord.InteractionRespond(interation.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Commands Updated",
+			},
+		})
 	}
 }
 
@@ -316,11 +568,16 @@ func registerCommands(discord *discordgo.Session, guild string) {
 			Name:        "earn",
 			Description: "earn money by completing tasks for robots",
 		},
+		{
+			Name:        "update",
+			Description: "update the commands for anythin",
+		},
 	}
 
 	for _, cmd := range commands {
-		_, err := discord.ApplicationCommandCreate(discord.State.User.ID, guild, cmd)
-		if err != nil {
+		discord.ApplicationCommandDelete(discord.State.User.ID, guild, cmd.ApplicationID)
+		_, err2 := discord.ApplicationCommandCreate(discord.State.User.ID, guild, cmd)
+		if err2 != nil {
 			fmt.Println("Failed to register commands in guild: " + guild)
 		}
 	}
