@@ -203,6 +203,7 @@ func buttonClick(discord *discordgo.Session, interation *discordgo.InteractionCr
 					},
 				})
 			}
+			equations[interation.Member.User.ID] = Equation{}
 		} else if equations[interation.Member.User.ID].equation_type == "log" {
 			a := equations[interation.Member.User.ID].a * equations[interation.Member.User.ID].b
 			b := equations[interation.Member.User.ID].c * equations[interation.Member.User.ID].d
@@ -230,6 +231,7 @@ func buttonClick(discord *discordgo.Session, interation *discordgo.InteractionCr
 				})
 			}
 		}
+		equations[interation.Member.User.ID] = Equation{}
 	}
 }
 
