@@ -40,6 +40,7 @@ func Run() {
 
 	discord.AddHandler(newMessage)
 	discord.AddHandler(onGuildJoin)
+	discord.AddHandler(ready)
 
 	discord.AddHandler(func(session *discordgo.Session, interation *discordgo.InteractionCreate) {
 		if interation.Type == discordgo.InteractionApplicationCommand {
@@ -59,6 +60,13 @@ func Run() {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
+}
+
+func ready(discord *discordgo.Session, ready *discordgo.Ready) {
+	err := discord.UpdateGameStatus(0, "/help")
+	if err != nil {
+		fmt.Println("Error updating status:", err)
+	}
 }
 
 func onGuildJoin(discord *discordgo.Session, event *discordgo.GuildCreate) {
